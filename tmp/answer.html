@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Answer Viewer</title>
+  <style>
+    body { text-align: center; margin: 0; font-family: sans-serif; }
+    canvas { background: #fff; border: 1px solid #ccc; display: block; margin: 10px auto; }
+    input, button {
+      padding: 10px; font-size: 16px; margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>お手本図形（Answer）</h2>
+  <canvas id="answerCanvas" width="400" height="400"></canvas>
+  <div>
+    <input type="number" id="countInput" placeholder="図形の数" min="1" max="10">
+    <button onclick="generatePattern()">図形を生成</button>
+  </div>
+
+  <script>
+    // canvas 関連の準備
+    const canvas = document.getElementById('answerCanvas');
+    const ctx = canvas.getContext('2d');
+    const SIZE = 30; // 図形のサイズ（30px）
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    // 青い四角を描画
+    function drawSquare(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x - SIZE / 2, y - SIZE / 2, SIZE, SIZE);
+    }
+
+    // 赤い三角を描画
+    function drawTriangle(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x, y - SIZE / 2);
+      ctx.lineTo(x - SIZE / 2, y + SIZE / 2);
+      ctx.lineTo(x + SIZE / 2, y + SIZE / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 緑の丸を描画
+    function drawCircle(x, y, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, SIZE / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 図形タイプに応じた描画関数を呼び出す
+    function drawShape(type, x, y, color) {
+      if (type === 'square') drawSquare(x, y, color);
+      if (type === 'triangle') drawTriangle(x, y, color);
+      if (type === 'circle') drawCircle(x, y, color);
+    }
+
+    // 方向名に応じて位置のオフセットを返す
+    function getOffset(direction) {
+      switch (direction) {
+        case 'up': return { x: 0, y: -SIZE };
+        case 'down': return { x: 0, y: SIZE };
+        case 'left': return { x: -SIZE, y: 0 };
+        case 'right': return { x: SIZE, y: 0 };
+      }
+    }
+
+    // 除外リストを考慮してランダムな方向を返す（未使用）
+    function getRandomDirection(exclude) {
+      const directions = ['up', 'down', 'left', 'right'];
+      const options = directions.filter(d => !exclude.includes(d));
+      return options[Math.floor(Math.random() * options.length)];
+    }
+
+    // ランダムな色（視認性が高めのRGB）を返す
+    function getRandomColor() {
+      const r = Math.floor(Math.random() * 200) + 30;
+      const g = Math.floor(Math.random() * 200) + 30;
+      const b = Math.floor(Math.random() * 200) + 30;
+      return `rgb(${r},${g},${b})`;
+    }
+
+    // 図形パターンを生成して描画
+    function generatePattern() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // キャンバス初期化
+
+      const count = parseInt(document.getElementById('countInput').value) || 3;
+
+      // 入力数が不正な場合のチェック
+      if (count < 1 || count > 10) {
+        alert("1〜10の範囲で入力してください。");
+        return;
+      }
+
+      const shapes = ['square', 'triangle', 'circle']; // 使用可能な図形タイプ
+      const visited = new Set();   // 使用済み座標の集合（重複防止）
+      const positions = [];        // 図形の配置位置を格納
+
+      // 最初の図形は中央に配置
+      const start = { x: centerX, y: centerY };
+      positions.push(start);
+      visited.add(`${start.x},${start.y}`);
+
+      // 残りの図形を、すでにある図形の隣に配置
+      for (let i = 1; i < count; i++) {
+        const base = positions[Math.floor(Math.random() * positions.length)]; // 基準図形をランダムに選ぶ
+        let newPos;
+        let tries = 0;
+        do {
+          const dir = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+          const offset = getOffset(dir);
+          newPos = {
+            x: base.x + offset.x,
+            y: base.y + offset.y
+          };
+          tries++;
+        } while (visited.has(`${newPos.x},${newPos.y}`) && tries < 100); // 重複しない位置を探す
+
+        if (tries >= 100) break; // 無限ループ防止
+
+        positions.push(newPos);
+        visited.add(`${newPos.x},${newPos.y}`);
+      }
+
+      // 配置した位置ごとに、ランダムな図形タイプと色で描画
+      positions.forEach(pos => {
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        const color = getRandomColor();
+        drawShape(shape, pos.x, pos.y, color);
+      });
+    }
+
+    // ページ初回読み込み時に自動で1回生成
+    generatePattern();
+  </script>
+</body>
+</html>
+

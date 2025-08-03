@@ -7,46 +7,66 @@ import "./../app/app.css";
 import { Amplify } from "aws-amplify";
 import outputs from "@/amplify_outputs.json";
 import "@aws-amplify/ui-react/styles.css";
+import { useAuthenticator } from "@aws-amplify/ui-react";
+import { getCurrentUser, GetCurrentUserOutput } from 'aws-amplify/auth';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 Amplify.configure(outputs);
 
 const client = generateClient<Schema>();
 
 export default function App() {
-  const [todos, setTodos] = useState<Array<Schema["Todo"]["type"]>>([]);
+  const [user, setUser] = useState<GetCurrentUserOutput>();
+  const [lobbies, setLobbies] = useState<Array<Schema["Lobby"]["type"]>>([]);
+  const { signOut } = useAuthenticator();
+  const router = useRouter();
 
-  function listTodos() {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
+  const getCurrentUserAsync = async () => {
+    const result = await getCurrentUser();
+    setUser(result);
+  };
+
+  useEffect(() => {
+    getCurrentUserAsync();
+  }, []);
+
+  function listLobbies() {
+    client.models.Lobby.observeQuery().subscribe({
+      next: (data) => setLobbies([...data.items]),
     });
   }
 
   useEffect(() => {
-    listTodos();
+    listLobbies();
   }, []);
 
-  function createTodo() {
-    client.models.Todo.create({
-      content: window.prompt("Todo content"),
+  function createLobby() {
+    client.models.Lobby.create({
+      name: window.prompt("Lobby name"),
+      owner: user?.userId
     });
+  }
+
+  function enterLobby(lobby_id: string) {
+    client.models.UserLobby.update({
+      id: user?.userId as string,
+      lobby_id: lobby_id
+    });
+    router.push(`/lobby?id=${encodeURIComponent(lobby_id)}`);
   }
 
   return (
     <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
+      <h1>Home</h1>
+      <h2>{user?.userId}</h2>
+      <button onClick={createLobby}>Create Lobby</button>
       <ul>
-        {todos.map((todo) => (
-          <li key={todo.id}>{todo.content}</li>
+        {lobbies.map((lobby) => (
+          <li key={lobby.id}>{lobby.name}{lobby.id}<button onClick={() => enterLobby(lobby.id)}>参加</button></li>
         ))}
       </ul>
-      <div>
-        🥳 App successfully hosted. Try creating a new todo.
-        <br />
-        <a href="https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/">
-          Review next steps of this tutorial.
-        </a>
-      </div>
+      <button onClick={signOut}>Sign out</button>
     </main>
   );
 }
