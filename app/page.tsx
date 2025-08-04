@@ -48,11 +48,43 @@ export default function App() {
     });
   }
 
-  function enterLobby(lobby_id: string) {
+
+  async function initUserLobby() {
+    const { data: userLobby, errors } = await client.models.UserLobby.get({
+      id: user?.userId as string
+    });
+    console.log('initUserLobby()');
+    console.log('userLobby', userLobby);
+    if (userLobby != null) {
+      client.models.UserLobby.update({
+        id: user?.userId as string,
+        lobby_id: null
+      });
+    } else {
+      client.models.UserLobby.create({
+        id: user?.userId as string,
+        lobby_id: null
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (user != null) {
+      initUserLobby();
+    }
+  }, [user]);
+
+  async function enterLobby(lobby_id: string) {
+    //const { data: userLobby, errors } = await client.models.UserLobby.get({
+    //  id: user?.userId as string
+    //});
+    console.log('enterLobby');
+    //console.log('userLobby', userLobby);
     client.models.UserLobby.update({
       id: user?.userId as string,
       lobby_id: lobby_id
     });
+
     router.push(`/lobby?id=${encodeURIComponent(lobby_id)}`);
   }
 
@@ -63,7 +95,7 @@ export default function App() {
       <button onClick={createLobby}>Create Lobby</button>
       <ul>
         {lobbies.map((lobby) => (
-          <li key={lobby.id}>{lobby.name}{lobby.id}<button onClick={() => enterLobby(lobby.id)}>参加</button></li>
+          <li key={lobby.id}>{lobby.name} : {lobby.id}<button onClick={() => enterLobby(lobby.id)}>参加</button></li>
         ))}
       </ul>
       <button onClick={signOut}>Sign out</button>

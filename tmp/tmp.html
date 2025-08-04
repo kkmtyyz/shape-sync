@@ -1,0 +1,101 @@
+CTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>図形描画</title>
+  <style>
+    canvas {
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="myCanvas" width="400" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // データ（例）
+    const shapes = 
+[
+    {
+        "id": "dummy1-17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "square",
+        "color": "#e43ecd",
+        "x": 0,
+        "y": 0
+    },
+    {
+        "id": "17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "triangle",
+        "color": "#a98627",
+        "x": 0,
+        "y": -30
+    },
+    {
+        "id": "dummy2-17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "circle",
+        "color": "#55ed8b",
+        "x": -30,
+        "y": 0
+    },
+    {
+        "id": "dummy3-17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "square",
+        "color": "#45951f",
+        "x": -60,
+        "y": 0
+    },
+    {
+        "id": "dummy4-17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "triangle",
+        "color": "#48886a",
+        "x": -30,
+        "y": 30
+    },
+    {
+        "id": "dummy5-17845a88-5071-707f-a31c-8d5a69bc3fdf",
+        "shape": "circle",
+        "color": "#72c792",
+        "x": 0,
+        "y": 30
+    }
+]
+;
+
+    // 描画中心のオフセット (canvas 中心を (0, 0) にする)
+    const offsetX = canvas.width / 2;
+    const offsetY = canvas.height / 2;
+    const size = 30;
+
+    function drawShape(shape) {
+      const { x, y, color, shape: type } = shape;
+      const cx = offsetX + x;
+      const cy = offsetY + y;
+
+      ctx.fillStyle = color;
+
+      if (type === "square") {
+        ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
+      } else if (type === "circle") {
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === "triangle") {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - size / 2);
+        ctx.lineTo(cx + size / 2, cy + size / 2);
+        ctx.lineTo(cx - size / 2, cy + size / 2);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    shapes.forEach(drawShape);
+  </script>
+</body>
+</html>
+
+

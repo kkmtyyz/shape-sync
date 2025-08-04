@@ -18,19 +18,43 @@ export default function LobbyPage() {
   const [userLobby, setUserLobby] = useState<Array<Schema["UserLobby"]["type"]>>([]);
   const [isOwner, setIsOwner] = useState<Boolean>(false);
   const [myEvents, setMyEvents] = useState<Record<string, any>[]>([]);
+  const [lobby, setLobby] = useState<Schema["Lobby"]["type"]>();
 
   useEffect(() => {
     console.log('received', myEvents);
-    if (myEvents.event?.some == 'start_game') {
-      router.push(`/game?id=${encodeURIComponent(lobby_id as string)}`);
-}
+    if (myEvents.event?.message == 'start_game') {
+      const result = window.confirm("ゲームを開始してよろしいですか？"); // OK = true, キャンセル = false
+      if (result) {
+        console.log("Yesが選ばれました");
+        console.log('token', myEvents.event?.taskToken);
+
+        (async () => {
+          const ret = await client.queries.sendTaskSuccessSfn({
+            taskToken: myEvents.event.taskToken,
+          });
+          console.log(ret);
+ 
+          router.push(`/game?id=${encodeURIComponent(lobby_id as string)}`);
+        })();
+      } else {
+        console.log("Noが選ばれました");
+      }
+    }
   }, [myEvents]);
 
   useEffect(() => {
-    let channel: EventsChannel;
+    if (user == null) {
+      console.log('user is null');
+      return;
+    }
 
+    let channel: EventsChannel;
+    // チャネル `/default/<lobby_id>/<user_id>` のサブスクリプションを開始
     const connectAndSubscribe = async () => {
-      channel = await events.connect('/default/channel');
+      const channel_name = '/default/' + lobby_id + '/' + user?.userId;
+      console.log('channel_name', channel_name);
+      //channel = await events.connect('/default/' + lobby_id + '/' + user?.userId);
+      channel = await events.connect(channel_name);
 
       channel.subscribe({
         next: (data) => {
@@ -45,7 +69,7 @@ export default function LobbyPage() {
     connectAndSubscribe();
 
     return () => channel && channel.close();
-  }, []);
+  }, [user]);
 
   async function publishEvent() {
     // Publish via HTTP POST
@@ -66,6 +90,7 @@ export default function LobbyPage() {
   }, []);
 
   function listUsers() {
+    // ロビーに入ったらロビーにいるユーザーをサブスクライブ
     client.models.UserLobby.observeQuery({
       filter: {
         lobby_id: {eq: lobby_id}
@@ -77,6 +102,24 @@ export default function LobbyPage() {
 
   useEffect(() => {
     listUsers();
+  }, []);
+
+  useEffect(() => {
+    console.log('lobby', lobby);
+    if (lobby?.state == 'start_game') {
+      router.push(`/game?id=${encodeURIComponent(lobby_id as string)}`);
+}
+  }, [lobby]);
+
+  useEffect(() => {
+    // ロビーに入ったらロビーの状態をサブスクライブ
+    client.models.Lobby.observeQuery({
+      filter: {
+        id: {eq: lobby_id}
+      }
+    }).subscribe({
+      next: (data) => setLobby(data.items[0]),
+    });
   }, []);
 
   const getIsOwnerIdAsync = async() => {
@@ -95,8 +138,9 @@ export default function LobbyPage() {
   async function startGame() {
     console.log('check');
     const user_num = userLobby.length;
-    const ret = client.queries.startSfn({
+    const ret = await client.queries.startSfn({
       name: "Amplify",
+      lobby_id: lobby_id
     })
     console.log(ret);
     console.log(user_num);
