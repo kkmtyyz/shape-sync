@@ -530,10 +530,9 @@ export default function GamePage() {
       <p>{lobby_id}</p>
       <h3>他のプレイヤーと協力して以下の図形を完成させましょう！</h3>
       <div ref={resultShapeRef}></div>
-      <h3 className="mt-3">あなたの図形は以下</h3>
-      方向キーで操作できます。
+      <h3 className="mt-3">あなたの図形は以下です。方向キーで動かしてみましょう！</h3>
       <div ref={gameRef} style={{ marginTop: "10px", fontSize: "20px" }}></div>
-      <button onClick={startGame} type="button" className="btn btn-success my-3">準備完了</button>
+      <button onClick={startGame} type="button" className="btn btn-success my-3 w-50">準備完了</button>
 
       {showWait && (
         <div
@@ -544,7 +543,7 @@ export default function GamePage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-body">
-                <p>他のプレイヤーの準備完了を待っています</p>
+                <h3>他のプレイヤーの準備完了を待っています</h3>
               </div>
             </div>
           </div>

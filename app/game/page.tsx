@@ -139,6 +139,9 @@ export default function ReadyPage() {
       // サブスクリプションを開始
       channel.subscribe({
         next: (data) => {
+          // クリア済みなら処理をスキップ（他プレイヤーの図形の動きを止める）
+          if (isCleared) return;
+          
           // ゲームの処理
           console.log('game data', data);
           console.log('game data event', data.event.id);
@@ -284,6 +287,12 @@ export default function ReadyPage() {
 
     const speed = 5;
     app.ticker.add(() => {
+      // クリア済みなら処理をスキップ（図形の動きを止める）
+      if (isCleared) {
+        checkCompletion(); // クリア状態の確認は継続
+        return;
+      }
+      
       const now = Date.now();
       const my = players.current[user_id];
       if (!my) return;
@@ -317,6 +326,9 @@ export default function ReadyPage() {
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // クリア済みなら処理をスキップ
+      if (isCleared) return;
+      
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault(); // ← ここでスクロールを防止
       }
@@ -325,6 +337,9 @@ export default function ReadyPage() {
 
     //const handleKeyUp = (e: KeyboardEvent) => (keys[e.key] = false);
     const handleKeyUp = (e: KeyboardEvent) => {
+      // クリア済みなら処理をスキップ
+      if (isCleared) return;
+      
       keys[e.key] = false;
     };
 
@@ -414,298 +429,30 @@ export default function ReadyPage() {
     }
   }
 
-
-  const startGame = async () => {
+  const endGame = async () => {
     if (!taskToken) return;
     await client.queries.sendTaskSuccessSfn({ taskToken });
-    startFlag.current = true;
-    setShowWait(true); // モーダル表示
+    router.push(`/`);
   };
 
 
-
-/*
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const keys = useRef<Record<string, boolean>>({});
-
-  // 初期描画用キャンバス
-  const answerDraw = () => {
-    const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx || !personalMessage) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const shapes = personalMessage.event?.message || [];
-
-    const offsetX = canvas.width / 2;
-    const offsetY = canvas.height / 2;
-    const size = 30;
-
-    shapes.forEach((shape: Shape) => {
-      const { x = 0, y = 0, color = 'black', shape: type = 'square' } = shape;
-      const cx = offsetX + x;
-      const cy = offsetY + y;
-
-      ctx.fillStyle = color;
-
-      if (type === "square") {
-        ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
-      } else if (type === "circle") {
-        ctx.beginPath();
-        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (type === "triangle") {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - size / 2);
-        ctx.lineTo(cx + size / 2, cy + size / 2);
-        ctx.lineTo(cx - size / 2, cy + size / 2);
-        ctx.closePath();
-        ctx.fill();
-      }
-    });
+  const gotoHome = async () => {
+    if (!taskToken) return;
+    await client.queries.sendTaskSuccessSfn({ taskToken });
+    router.push(`/`);
   };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
-    const size = 30;
-    const handleKeyDown = (e: KeyboardEvent) => keys.current[e.key] = true;
-    const handleKeyUp = (e: KeyboardEvent) => keys.current[e.key] = false;
-
-    const update = () => {
-      //console.log('update');
-      const shape = myShape.current;
-      if (!shape) return;
-      if (shape.x == null || shape.y == null) return;
-
-      const speed = 5;
-      const halfSize = size / 2;
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-
-      let newX = shape.x;
-      let newY = shape.y;
-
-      if (keys.current['ArrowUp']) newY -= speed;
-      if (keys.current['ArrowDown']) newY += speed;
-      if (keys.current['ArrowLeft']) newX -= speed;
-      if (keys.current['ArrowRight']) newX += speed;
-
-      const maxX = canvasWidth / 2 - halfSize;
-      const maxY = canvasHeight / 2 - halfSize;
-
-      shape.x = Math.max(-maxX, Math.min(maxX, newX));
-      shape.y = Math.max(-maxY, Math.min(maxY, newY));
-    };
-
-    const draw = () => {
-      //console.log('draw');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!myShape.current) return;
-      const { x, y, color, shape } = myShape.current;
-      const cx = canvas.width / 2 + x;
-      const cy = canvas.height / 2 + y;
-      ctx.fillStyle = color;
-
-      if (shape === "square") {
-        ctx.fillRect(cx - size / 2, cy - size / 2, size, size);
-      } else if (shape === "circle") {
-        ctx.beginPath();
-        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (shape === "triangle") {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - size / 2);
-        ctx.lineTo(cx + size / 2, cy + size / 2);
-        ctx.lineTo(cx - size / 2, cy + size / 2);
-        ctx.closePath();
-        ctx.fill();
-      }
-    };
-
-    const loop = () => {
-      update();
-      draw();
-      requestAnimationFrame(loop);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    loop();
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [taskToken]);
-
-  type Player = {
-    id: string;
-    color: string;
-    shape: string;
-    x: number;
-    y: number;
-  };
-  
-  const players: Player[] = [
-    { id: "player-uuid-123", color: "#ff00ff", shape: "丸", x: 100, y: 150 },
-    { id: "player-uuid-456", color: "#00ffff", shape: "四角", x: 200, y: 150 },
-    { id: "player-uuid-789", color: "#00ff00", shape: "三角", x: 300, y: 150 },
-  ];
-  
-  const targetPattern = [
-    { shape: "丸", dx: -50, dy: 0 },
-    { shape: "四角", dx: 0, dy: 0 },
-    { shape: "三角", dx: 50, dy: 0 },
-  ];
-  
-  const myId = "player-uuid-123";
-  const canvasRef2 = useRef<HTMLDivElement>(null);
-  const resultRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const app = new PIXI.Application({
-      width: 800,
-      height: 600,
-      backgroundColor: 0xf0f0f0,
-    });
-
-    if (canvasRef2.current) {
-      canvasRef2.current.appendChild(app.view);
-    }
-
-    const playerGraphicsMap = new Map<string, PIXI.Graphics>();
-
-    const createShapeGraphic = (shape: string, color: string) => {
-      const g = new PIXI.Graphics();
-      g.beginFill(PIXI.utils.string2hex(color));
-      if (shape === "丸") {
-        g.drawCircle(0, 0, 20);
-      } else if (shape === "四角") {
-        g.drawRect(-20, -20, 40, 40);
-      } else if (shape === "三角") {
-        g.moveTo(0, -20).lineTo(20, 20).lineTo(-20, 20).lineTo(0, -20);
-      }
-      g.endFill();
-      return g;
-    };
-
-    // 初期描画
-    players.forEach((p) => {
-      const g = createShapeGraphic(p.shape, p.color);
-      g.x = p.x;
-      g.y = p.y;
-      app.stage.addChild(g);
-      playerGraphicsMap.set(p.id, g);
-    });
-
-    // キー操作
-    const keys: Record<string, boolean> = {};
-
-    //const handleKeyDown = (e: KeyboardEvent) => (keys[e.key] = true);
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-        e.preventDefault(); // ← ここでスクロールを防止
-      }
-      keys[e.key] = true;
-    };
-
-    //const handleKeyUp = (e: KeyboardEvent) => (keys[e.key] = false);
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keys[e.key] = false;
-    };
-
-    //window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keydown", handleKeyDown, { passive: false });
-    window.addEventListener("keyup", handleKeyUp);
-
-    app.ticker.add(() => {
-      const me = players.find((p) => p.id === myId);
-      if (!me) return;
-
-      const speed = 5;
-      if (keys["ArrowUp"]) me.y -= speed;
-      if (keys["ArrowDown"]) me.y += speed;
-      if (keys["ArrowLeft"]) me.x -= speed;
-      if (keys["ArrowRight"]) me.x += speed;
-
-      // 範囲内に制限（図形がはみ出さないように）
-      const margin = 20; // 図形の最大サイズ半分
-      me.x = Math.max(margin, Math.min(800 - margin, me.x));
-      me.y = Math.max(margin, Math.min(600 - margin, me.y));
-
-      // モックネットワーク同期
-      simulateNetworkSync();
-
-      // 描画更新
-      players.forEach((p) => {
-        const g = playerGraphicsMap.get(p.id);
-        if (g) {
-          g.x = p.x;
-          g.y = p.y;
-        }
-      });
-
-      checkPatternMatch();
-    });
-
-    const simulateNetworkSync = () => {
-      // 実際の通信はなし（ローカル同期）
-    };
-
-    const checkPatternMatch = () => {
-      const center = getCenterPoint(players);
-      const relativePositions = players.map((p) => ({
-        shape: p.shape,
-        dx: Math.round(p.x - center.x),
-        dy: Math.round(p.y - center.y),
-      }));
-
-      const isMatch = targetPattern.every((t) =>
-        relativePositions.some(
-          (p) =>
-            p.shape === t.shape &&
-            Math.abs(p.dx - t.dx) < 10 &&
-            Math.abs(p.dy - t.dy) < 10
-        )
-      );
-
-      if (resultRef.current) {
-        resultRef.current.textContent = isMatch ? "お手本完成！" : "まだ未完成";
-      }
-    };
-
-    const getCenterPoint = (players: Player[]) => {
-      const xs = players.map((p) => p.x);
-      const ys = players.map((p) => p.y);
-      return {
-        x: xs.reduce((a, b) => a + b, 0) / players.length,
-        y: ys.reduce((a, b) => a + b, 0) / players.length,
-      };
-    };
-
-    return () => {
-      app.destroy(true, true);
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-*/
   return (
     <div>
       <h1>ゲーム画面</h1>
       <p>{lobby_id}</p>
-      <h3>他のプレイヤーと協力して以下の図形を完成させましょう！</h3>
+      <h3>お手本</h3>
       <div ref={resultShapeRef}></div>
-      <h3 className="mt-3">あなたの図形は以下</h3>
+      <h3 className="mt-3">他のプレイヤーと協力してお手本と同じ図形を完成させましょう！</h3>
       方向キーで操作できます。
       <div ref={gameRef} style={{ marginTop: "10px", fontSize: "20px" }}></div>
-      <button onClick={startGame} type="button" className="btn btn-success my-3">準備完了</button>
+      <button onClick={endGame} type="button" className="btn btn-success my-3">ゲームを終わる</button>
 
       {showWait && (
         <div
@@ -733,6 +480,17 @@ export default function ReadyPage() {
             <div className="modal-content">
               <div className="modal-body">
                 <h3>クリア！おめでとうございます！</h3>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    gotoHome();
+                  }}
+                >
+                  ホーム画面に戻る
+                </button>
               </div>
             </div>
           </div>

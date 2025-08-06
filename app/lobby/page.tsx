@@ -240,16 +240,16 @@ export default function LobbyPage() {
 
   return (
     <div>
-      <h1>Lobby: </h1>
+      <h1>{lobby?.name}</h1>
       <p>{lobby_id}</p>
-      <div className="mt-5">参加中のユーザー</div>
+      <h4 className="mt-5">参加中のユーザー</h4>
+      <div>（★: ロビーオーナー）</div>
       <ul className="list-group mt-3">
         {userLobby.map(item => (
-          <li key={item.id} className="list-group-item list-group-item-light">{item.user_name}</li>
+          <li key={item.id} className="list-group-item list-group-item-light">{(lobby?.owner === item.id) && "★ "}{item.user_name}</li>
         ))}
       </ul>
-      <button onClick={startGame} type="button" className="btn btn-success w-100 my-3" disabled={!isOwner}>Start Game</button>
-      <button onClick={publishEvent} type="button" className="btn" disabled={!isOwner}>Publish Event</button>
+      <button onClick={startGame} type="button" className="btn btn-success w-100 my-3" disabled={!isOwner}>ゲームスタート（ロビーオーナーのみ実行できます）</button>
 
       {showConfirm && (
         <div
@@ -260,7 +260,8 @@ export default function LobbyPage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-body">
-                <p>ゲームを開始してもいいですか？</p>
+                <h4>ロビーオーナーがゲームスタートを提案しています。</h4>
+                <h4>ゲームを開始しますか？</h4>
               </div>
               <div className="modal-footer">
                 <button
