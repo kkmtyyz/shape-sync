@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from 'next/navigation';
 import { generateClient } from "aws-amplify/data";
-import { getCurrentUser, GetCurrentUserOutput } from 'aws-amplify/auth';
+import { FetchUserAttributesOutput, fetchUserAttributes } from 'aws-amplify/auth';
 import { useRouter } from 'next/navigation';
 import type { Schema } from "@/amplify/data/resource";
 import { events, type EventsChannel } from "aws-amplify/data";
@@ -12,55 +12,57 @@ const client = generateClient<Schema>();
 
 export default function LobbyPage() {
   const searchParams = useSearchParams();
-  const lobby_id = searchParams.get('id');
+  const user_id = searchParams.get('id');
+  const lobby_id = searchParams.get('lobby_id');
   const router = useRouter();
-  const [user, setUser] = useState<GetCurrentUserOutput>();
+  const [user, setUser] = useState<FetchUserAttributesOutput>();
   const [userLobby, setUserLobby] = useState<Array<Schema["UserLobby"]["type"]>>([]);
   const [isOwner, setIsOwner] = useState<Boolean>(false);
-  const [myEvents, setMyEvents] = useState<Record<string, any>[]>([]);
+  const [personalMessage, setPersonalMessage] = useState<Record<string, any>[]>([]);
+  const [lobbyMessage, setLobbyMessage] = useState<Record<string, any>[]>([]);
   const [lobby, setLobby] = useState<Schema["Lobby"]["type"]>();
+  const [showConfirm, setShowConfirm] = useState(false);
+  let connectionFlag = false;
+  let readyFlag = useRef<Boolean>(false);
 
+  // PersonalMessage処理
   useEffect(() => {
-    console.log('received', myEvents);
-    if (myEvents.event?.message == 'start_game') {
-      const result = window.confirm("ゲームを開始してよろしいですか？"); // OK = true, キャンセル = false
-      if (result) {
-        console.log("Yesが選ばれました");
-        console.log('token', myEvents.event?.taskToken);
+    console.log('received', personalMessage);
+    if (personalMessage.event?.message == 'confirm_start_ready' && readyFlag.current == false) {
+      readyFlag.current = true;
+      setShowConfirm(true); // モーダル表示
+      //const result = window.confirm("ゲームを開始してよろしいですか？"); // OK = true, キャンセル = false
+      //if (result) {
+      //  console.log("Yesが選ばれました");
+      //  console.log('token', personalMessage.event?.taskToken);
 
-        (async () => {
-          const ret = await client.queries.sendTaskSuccessSfn({
-            taskToken: myEvents.event.taskToken,
-          });
-          console.log(ret);
+      //  (async () => {
+      //    const ret = await client.queries.sendTaskSuccessSfn({
+      //      taskToken: personalMessage.event.taskToken,
+      //    });
+      //    console.log(ret);
+      //  //alert('他のプレイヤーを待っています');
  
-          router.push(`/game?id=${encodeURIComponent(lobby_id as string)}`);
-        })();
-      } else {
-        console.log("Noが選ばれました");
-      }
+      //    //router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
+      //  })();
+      //} else {
+      //  console.log("Noが選ばれました");
+      //}
     }
-  }, [myEvents]);
+  }, [personalMessage]);
 
+  // PersonalMessageサブスクライブ
   useEffect(() => {
-    if (user == null) {
-      console.log('user is null');
-      return;
-    }
-
     let channel: EventsChannel;
-    // チャネル `/default/<lobby_id>/<user_id>` のサブスクリプションを開始
     const connectAndSubscribe = async () => {
-      const channel_name = '/default/' + lobby_id + '/' + user?.userId;
+      const channel_name = '/default/' + lobby_id + '/' + user_id;
       console.log('channel_name', channel_name);
-      //channel = await events.connect('/default/' + lobby_id + '/' + user?.userId);
       channel = await events.connect(channel_name);
 
+      // チャネル `/default/<lobby_id>/<user_id>` のサブスクリプションを開始
       channel.subscribe({
         next: (data) => {
-          //console.log('received', data);
-          //setMyEvents((prev) => [data, ...prev]);
-          setMyEvents(data);
+          setPersonalMessage(data);
         },
         error: (err) => console.error('error', err),
       });
@@ -69,7 +71,39 @@ export default function LobbyPage() {
     connectAndSubscribe();
 
     return () => channel && channel.close();
-  }, [user]);
+  }, []);
+
+  // LobbyMessage処理
+  useEffect(() => {
+    console.log('lobbyMessage', lobbyMessage);
+    if (!lobbyMessage) return;
+    if (lobbyMessage.event?.message == 'start_ready' && readyFlag.current == true) {
+      router.push(`/ready?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
+    }
+  }, [lobbyMessage]);
+
+  // LobbyMessageサブスクライブ
+  useEffect(() => {
+    let channel: EventsChannel;
+    const connectAndSubscribe = async () => {
+      const channel_name = '/default/' + lobby_id;
+      console.log('channel_name', channel_name);
+      channel = await events.connect(channel_name);
+
+      // チャネル `/default/<lobby_id>` のサブスクリプションを開始
+      channel.subscribe({
+        next: (data) => {
+          setLobbyMessage(data);
+        },
+        error: (err) => console.error('error', err),
+      });
+    };
+
+    connectAndSubscribe();
+
+    return () => channel && channel.close();
+  }, []);
+
 
   async function publishEvent() {
     // Publish via HTTP POST
@@ -81,7 +115,7 @@ export default function LobbyPage() {
   }
 
   const getCurrentUserAsync = async () => {
-    const result = await getCurrentUser();
+    const result = await fetchUserAttributes();
     setUser(result);
   };
 
@@ -89,19 +123,55 @@ export default function LobbyPage() {
     getCurrentUserAsync();
   }, []);
 
+  /*
   function listUsers() {
     // ロビーに入ったらロビーにいるユーザーをサブスクライブ
-    client.models.UserLobby.observeQuery({
+    const subscription = client.models.UserLobby.observeQuery({
       filter: {
         lobby_id: {eq: lobby_id}
       }
     }).subscribe({
       next: (data) => setUserLobby([...data.items]),
     });
+    return () => subscription.unsubscribe();
   }
+  */
 
   useEffect(() => {
-    listUsers();
+    if (!lobby_id) return;
+     (async () => {
+       const {data: users, } = await client.models.UserLobby.list({
+          filter: {
+            lobby_id: {eq: lobby_id}
+          }
+       });
+       setUserLobby(users);
+     })();
+     console.log('users', userLobby);
+
+    //listUsers();
+    // ロビーに入ったらロビーにいるユーザーをサブスクライブ
+    //const subscription = client.models.UserLobby.observeQuery({
+    //const selectionSet = ['id', 'lobby_id', 'user_name'] as const;
+    const subscription = client.models.UserLobby.onUpdate({
+    //const subscription = client.models.UserLobby.observeQuery({
+      filter: {
+        lobby_id: {eq: lobby_id}
+      }
+      //selectionSet: ['id', 'lobby_id', 'user_name']
+      //selectionSet: [...selectionSet]
+    }).subscribe({
+      //next: (data) => setUserLobby([...data.items]),
+      //next: ({items, isSynced}) => {
+      next: (data) => {
+        console.log('data', data);
+        //setUserLobby(data.items);
+        setUserLobby(prev => [...prev, data]);
+        //setUserLobby(items);
+        //setUserLobby([...items])
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -113,27 +183,29 @@ export default function LobbyPage() {
 
   useEffect(() => {
     // ロビーに入ったらロビーの状態をサブスクライブ
-    client.models.Lobby.observeQuery({
+    const subscription = client.models.Lobby.observeQuery({
       filter: {
         id: {eq: lobby_id}
       }
     }).subscribe({
       next: (data) => setLobby(data.items[0]),
     });
+    return () => subscription.unsubscribe();
   }, []);
 
   const getIsOwnerIdAsync = async() => {
     const {data: lobby, errors} = await client.models.Lobby.get({ id: lobby_id });
     console.log(lobby);
-    console.log(user);
-    if (lobby?.owner === user?.userId) {
+    //console.log(user);
+    //if (lobby?.owner === user?.sub) {
+    if (lobby?.owner === user_id) {
       setIsOwner(true);
     }
   };
 
   useEffect(() => {
     getIsOwnerIdAsync()
-  }, [user]);
+  }, []);
 
   async function startGame() {
     console.log('check');
@@ -147,17 +219,75 @@ export default function LobbyPage() {
     //await events.post('default/channel', { some: 'start_game' });
   }
 
+  function modalCallBack(res: boolean) {
+    if (res) {
+      console.log("Yesが選ばれました");
+      console.log('token', personalMessage.event?.taskToken);
+    
+      (async () => {
+        const ret = await client.queries.sendTaskSuccessSfn({
+          taskToken: personalMessage.event.taskToken,
+        });
+        console.log(ret);
+      //alert('他のプレイヤーを待っています');
+    
+        //router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
+      })();
+    } else {
+      console.log("Noが選ばれました");
+    }
+  }
+
   return (
     <div>
-      <h1>Lobby</h1>
+      <h1>Lobby: </h1>
       <p>{lobby_id}</p>
-      <button onClick={startGame} disabled={!isOwner}>Start Game</button>
-      <button onClick={publishEvent} disabled={!isOwner}>Publish Event</button>
-      <ul>
-        {userLobby.map((user) => (
-          <li key={user.id}>{user.id}</li>
+      <div className="mt-5">参加中のユーザー</div>
+      <ul className="list-group mt-3">
+        {userLobby.map(item => (
+          <li key={item.id} className="list-group-item list-group-item-light">{item.user_name}</li>
         ))}
       </ul>
+      <button onClick={startGame} type="button" className="btn btn-success w-100 my-3" disabled={!isOwner}>Start Game</button>
+      <button onClick={publishEvent} type="button" className="btn" disabled={!isOwner}>Publish Event</button>
+
+      {showConfirm && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          tabIndex={-1}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-body">
+                <p>ゲームを開始してもいいですか？</p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowConfirm(false);
+                    modalCallBack(false);
+                  }}
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowConfirm(false);
+                    modalCallBack(true);
+                  }}
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

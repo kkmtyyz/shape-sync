@@ -7,5 +7,24 @@ export default function AuthenticatorWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  return <Authenticator>{children}</Authenticator>;
+  return <Authenticator formFields={{
+        signUp: {
+          preferred_username: {
+            isRequired: true,
+            order: 1,
+          },
+          email: {
+            isRequired: true,
+            order: 2,
+          },
+          password: {
+            //label: 'パスワード',
+            //placeholder: 'パスワードを入力',
+            isRequired: true,
+            order: 3,
+          },
+        },
+      }}
+      signUpAttributes={['email']}
+ >{children}</Authenticator>;
 }

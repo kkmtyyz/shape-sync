@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./app.css";
+//import "./app.css";
 import AuthenticatorWrapper from "./AuthenticatorWrapper";
 import "@aws-amplify/ui-react/styles.css";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,10 +18,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>      
+    <html lang="en" data-bs-theme="dark">
+      <body>
+        <nav className="navbar bg-body-tertiary">
+          <div className="container-fluid">
+            <span className="navbar-brand mb-0 h1">Shape Sync</span>
+          </div>
+        </nav>
         <AuthenticatorWrapper>
-          {children}
+          <div className="container text-center">
+            {children}
+          </div>
         </AuthenticatorWrapper>
       </body>
     </html>

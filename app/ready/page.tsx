@@ -18,13 +18,7 @@ type Shape = {
   y?: number;
 };
 
-type PlayerData = {
-  graphic: PIXI.Graphics;
-  shape: Shape;
-  color: string;
-};
-
-export default function ReadyPage() {
+export default function GamePage() {
   const searchParams = useSearchParams();
   const user_id = searchParams.get("id");
   const lobby_id = searchParams.get("lobby_id");
@@ -45,32 +39,16 @@ export default function ReadyPage() {
   const myShape = useRef<Shape>({id: "dummy", color: "#FFFFFF", shape: "square", x: 0, y: 0});
   // お手本の図形情報
   const [answerShapes, setAnswerShapes] = useState<Array<Shape>>([]);
-  // ユーザーの図形情報（自分含む）
-  const players = useRef<Record<String, PlayerData>>({});
-  // ゲーム用チャネルのwebsocketコネクション
-  const lobbyGameChannelRef = useRef<EventsChannel>();
-  // ゲーム本体
-  const appRef = useRef<Any>();
 
   // PersonalMessage処理
   useEffect(() => {
     console.log('personalMessage', personalMessage);
-    // myShape とanswerShapes, players をセット
+    // myShape とanswerShapes をセット
     if (personalMessage?.event?.message && myShape.current.id === "dummy") {
-      // myShape
       console.log('message', personalMessage.event.message);
-      const found = personalMessage.event.message.find((s: Shape) => s.id === user_id);
+      const found = structuredClone(personalMessage.event.message.find((s: Shape) => s.id === user_id));
       if (found) myShape.current = found;
-
-      // answerShapes
       setAnswerShapes(personalMessage.event.message);
-
-      // players
-      //players.current = personalMessage.event.message.reduce((acc, item) => {
-      //  acc[item.id] = item;
-      //  return acc;
-      //}, {} as Record<string, Shape>);
-      //console.log('players', players.current);
     }
     // taskTokenセット
     if (personalMessage?.event?.taskToken && !taskToken) {
@@ -125,68 +103,6 @@ export default function ReadyPage() {
     return () => channel && channel.close();
   }, []);
 
-  // LobbyGameサブスクライブ
-  useEffect(() => {
-    let channel: EventsChannel;
-    const connectAndSubscribe = async () => {
-      const channel_name = '/default/' + lobby_id + '/game';
-      console.log('LobbyGame channel_name', channel_name);
-      channel = await events.connect(channel_name);
-
-      // サブスクリプションを開始
-      channel.subscribe({
-        next: (data) => {
-          // ゲームの処理
-          console.log('game data', data);
-          console.log('game data event', data.event.id);
-          console.log('user_id', user_id);
-          //const data = JSON.parse(event.data);
-          const { id, shape, color, x, y } = data.event;
-
-          if (id === user_id) return;
-          console.log('other player', data.event);
-          console.log('appRef.current', appRef.current);
-          console.log('players.current1', players.current);
-
-          if (!players.current[id]) {
-            console.log('players.current2', players.current);
-            const g = createShapeGraphic(shape.shape, color);
-            g.x = x;
-            g.y = y;
-            appRef.current.stage.addChild(g);
-            players.current[id] = { graphic: g, shape, color };
-          } else {
-            players.current[id].graphic.x = x;
-            players.current[id].graphic.y = y;
-          }
-        },
-        error: (err) => console.error('error', err),
-      });
-      lobbyGameChannelRef.current = channel;
-    };
-
-    connectAndSubscribe();
-
-    return () => channel && channel.close();
-  }, []);
-
-  function createShapeGraphic(shape: string, color: string) {
-    console.log('createShapeGraphic shape', shape);  
-    console.log('createShapeGraphic color', color);  
-    const g = new PIXI.Graphics();
-    const size = 30;
-    g.beginFill(PIXI.utils.string2hex(color));
-    if (shape === "circle") {
-      g.drawCircle(0, 0, size);
-    } else if (shape === "square") {
-      g.drawRect(0, 0, size, size);
-    } else if (shape === "triangle") {
-      g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
-    }
-    g.endFill();
-    return g;
-  }
-
   // お手本の描画
   useEffect(() => {
     if (!answerShapes || answerShapes.length === 0) return;
@@ -201,11 +117,25 @@ export default function ReadyPage() {
       resultShapeRef.current.appendChild(app.view);
     }
 
-    //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
+    const playerGraphicsMap = new Map<string, PIXI.Graphics>();
 
     const size = 30;
     //const offset = 150 + size / 2;
     const offset = 150 - size / 2;
+
+    const createShapeGraphic = (shape: string, color: string) => {
+      const g = new PIXI.Graphics();
+      g.beginFill(PIXI.utils.string2hex(color));
+      if (shape === "circle") {
+        g.drawCircle(0, 0, size);
+      } else if (shape === "square") {
+        g.drawRect(0, 0, size, size);
+      } else if (shape === "triangle") {
+        g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
+      }
+      g.endFill();
+      return g;
+    };
 
     // 初期描画
     answerShapes.forEach((p) => {
@@ -213,7 +143,7 @@ export default function ReadyPage() {
       g.x = p.x + offset;
       g.y = p.y + offset;
       app.stage.addChild(g);
-      //playerGraphicsMap.set(p.id, g);
+      playerGraphicsMap.set(p.id, g);
     });
 
     return () => {
@@ -222,78 +152,51 @@ export default function ReadyPage() {
   }, [answerShapes]);
 
 
-  let lastSent = 0;
-  const sendInterval = 1; // ms
-
-  // ゲームの描画
+  // ユーザー図形の描画
   useEffect(() => {
-    console.log('myShape', myShape.current);
+    console.log('myShape', myShape);
     const app = new PIXI.Application({
       width: 500,
       height: 300,
       backgroundColor: 0xFFFFFF,
     });
-    appRef.current = app;
 
     if (gameRef.current) {
       gameRef.current.appendChild(app.view);
     }
 
-    //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
+    const playerGraphicsMap = new Map<string, PIXI.Graphics>();
 
     const size = 30;
-
-    console.log('myShape.current', myShape.current);
-    console.log('myShape.current.color', myShape.current.color);
-    const myGraphic = createShapeGraphic(myShape.current.shape, myShape.current.color);
-    //myGraphic.x = 100 + Math.random() * 200;
-    //myGraphic.y = 100 + Math.random() * 200;
-    app.stage.addChild(myGraphic);
-
-    players.current[user_id] = {
-      graphic: myGraphic,
-      shape: myShape.current,
-      color: myShape.current.color,
+    //const offset = 150 + size / 2;
+    const offset = 250 - size / 2;
+    const createShapeGraphic = (shape: string, color: string) => {
+      const g = new PIXI.Graphics();
+      //g.beginFill(color);
+      g.beginFill(PIXI.utils.string2hex(color));
+      if (shape === "circle") {
+        g.drawCircle(0, 0, size);
+      } else if (shape === "square") {
+        g.drawRect(0, 0, size, size);
+      } else if (shape === "triangle") {
+        g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
+      }
+      g.endFill();
+      return g;
     };
-    console.log('init players.current', players.current);
+
+    // 初期描画
+    const g = createShapeGraphic(myShape.current.shape, myShape.current.color);
+
+    g.x = myShape.current.x + offset;
+    g.y = myShape.current.y + offset;
+    app.stage.addChild(g);
+    playerGraphicsMap.set(myShape.current.id, g);
 
     // キー操作
     const keys: Record<string, boolean> = {};
 
-    const speed = 5;
-    app.ticker.add(() => {
-      const now = Date.now();
-      const my = players.current[user_id];
-      if (!my) return;
-
-      let moved = false;
-      if (keys["ArrowUp"]) { my.graphic.y -= speed; moved = true; }
-      if (keys["ArrowDown"]) { my.graphic.y += speed; moved = true; }
-      if (keys["ArrowLeft"]) { my.graphic.x -= speed; moved = true; }
-      if (keys["ArrowRight"]) { my.graphic.x += speed; moved = true; }
-
-      // 範囲内に制限（図形がはみ出さないように）
-      my.graphic.x = Math.max(0, Math.min(500 - size, my.graphic.x));
-      my.graphic.y = Math.max(0, Math.min(300 - size, my.graphic.y));
-
-      if (moved && now - lastSent > sendInterval) {
-      //if (moved) {
-        const msg = {
-          id: user_id,
-          shape: my.shape,
-          color: my.color,
-          x: my.graphic.x,
-          y: my.graphic.y,
-        };
-        console.log('sent1');
-        lobbyGameChannelRef.current.publish(msg);
-        console.log('sent2');
-        lastSent = now;
-      }
-
-      checkCompletion();
-    });
-
+    //const handleKeyDown = (e: KeyboardEvent) => (keys[e.key] = true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
         e.preventDefault(); // ← ここでスクロールを防止
@@ -306,8 +209,32 @@ export default function ReadyPage() {
       keys[e.key] = false;
     };
 
+    //window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keydown", handleKeyDown, { passive: false });
     window.addEventListener("keyup", handleKeyUp);
+
+    app.ticker.add(() => {
+      //const me = players.find((p) => p.id === myId);
+      if (!myShape.current) return;
+
+      const speed = 5;
+      if (keys["ArrowUp"]) myShape.current.y -= speed;
+      if (keys["ArrowDown"]) myShape.current.y += speed;
+      if (keys["ArrowLeft"]) myShape.current.x -= speed;
+      if (keys["ArrowRight"]) myShape.current.x += speed;
+
+      // 範囲内に制限（図形がはみ出さないように）
+      myShape.current.x = Math.max(0, Math.min(500 - size, myShape.current.x));
+      myShape.current.y = Math.max(0, Math.min(300 - size, myShape.current.y));
+
+      // 描画更新
+      const g2 = playerGraphicsMap.get(myShape.current.id);
+      if (g2) {
+        g2.x = myShape.current.x;
+        g2.y = myShape.current.y;
+      }
+
+    });
 
     return () => {
       app.destroy(true, true);
@@ -315,42 +242,6 @@ export default function ReadyPage() {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [answerShapes]);
-
-  function checkCompletion() {
-    const playerEntries = Object.values(players);
-    if (playerEntries.length !== targetOffsets.length) return;
-
-    for (let i = 0; i < playerEntries.length; i++) {
-      const basePlayer = playerEntries[i];
-      const baseX = basePlayer.graphic.x;
-      const baseY = basePlayer.graphic.y;
-
-      let matchedAll = true;
-
-      for (const target of targetOffsets) {
-        const expectedX = baseX + target.dx;
-        const expectedY = baseY + target.dy;
-
-        const found = playerEntries.find(p => {
-          if (p.shape !== target.shape || p.color !== target.color) return false;
-          const dx = Math.abs(p.graphic.x - expectedX);
-          const dy = Math.abs(p.graphic.y - expectedY);
-          return dx < 10 && dy < 10;
-        });
-
-        if (!found) {
-          matchedAll = false;
-          break;
-        }
-      }
-
-      if (matchedAll) {
-        showMessage("クリア！");
-        return;
-      }
-    }
-  }
-
 
   const startGame = async () => {
     if (!taskToken) return;
@@ -635,7 +526,7 @@ export default function ReadyPage() {
 */
   return (
     <div>
-      <h1>ゲーム画面</h1>
+      <h1>ゲームの説明</h1>
       <p>{lobby_id}</p>
       <h3>他のプレイヤーと協力して以下の図形を完成させましょう！</h3>
       <div ref={resultShapeRef}></div>

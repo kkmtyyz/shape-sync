@@ -18,8 +18,8 @@ const schema = a.schema({
     .authorization((allow) => [allow.publicApiKey()]),
   UserLobby: a
     .model({
-      user_id: a.id(),
       lobby_id: a.string(),
+      user_name: a.string(),
     })
     .authorization((allow) => [allow.publicApiKey()]),
   startSfn: a
