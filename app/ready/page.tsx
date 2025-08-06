@@ -127,7 +127,7 @@ export default function GamePage() {
       const g = new PIXI.Graphics();
       g.beginFill(PIXI.utils.string2hex(color));
       if (shape === "circle") {
-        g.drawCircle(0, 0, size);
+        g.drawCircle(0, 0, size / 2);
       } else if (shape === "square") {
         g.drawRect(0, 0, size, size);
       } else if (shape === "triangle") {
@@ -175,7 +175,7 @@ export default function GamePage() {
       //g.beginFill(color);
       g.beginFill(PIXI.utils.string2hex(color));
       if (shape === "circle") {
-        g.drawCircle(0, 0, size);
+        g.drawCircle(0, 0, size / 2);
       } else if (shape === "square") {
         g.drawRect(0, 0, size, size);
       } else if (shape === "triangle") {

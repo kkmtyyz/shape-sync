@@ -183,7 +183,7 @@ export default function ReadyPage() {
     const size = 30;
     g.beginFill(PIXI.utils.string2hex(color));
     if (shape === "circle") {
-      g.drawCircle(0, 0, size);
+      g.drawCircle(0, 0, size/2);
     } else if (shape === "square") {
       g.drawRect(0, 0, size, size);
     } else if (shape === "triangle") {
@@ -399,7 +399,7 @@ export default function ReadyPage() {
         // 位置が近いか確認（許容誤差30px）
         const dx = Math.abs(p.dx - target.dx);
         const dy = Math.abs(p.dy - target.dy);
-        const positionMatch = dx < 3 && dy < 3;
+        const positionMatch = dx < 5 && dy < 5;
         
         console.log('判定:', {
           target,
