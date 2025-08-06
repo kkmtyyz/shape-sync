@@ -28,7 +28,8 @@ export default function LobbyPage() {
   // PersonalMessage処理
   useEffect(() => {
     console.log('received', personalMessage);
-    if (personalMessage.event?.message == 'confirm_start_ready' && readyFlag.current == false) {
+    //if (personalMessage.event?.message == 'confirm_start_ready' && readyFlag.current == false) {
+    if ((personalMessage as any).event?.message === 'confirm_start_ready' && readyFlag.current === false) {
       readyFlag.current = true;
       setShowConfirm(true); // モーダル表示
       //const result = window.confirm("ゲームを開始してよろしいですか？"); // OK = true, キャンセル = false
@@ -77,7 +78,8 @@ export default function LobbyPage() {
   useEffect(() => {
     console.log('lobbyMessage', lobbyMessage);
     if (!lobbyMessage) return;
-    if (lobbyMessage.event?.message == 'start_ready' && readyFlag.current == true) {
+    //if (lobbyMessage.event?.message == 'start_ready' && readyFlag.current == true) {
+    if ((lobbyMessage as any)?.event?.message === 'start_ready' && readyFlag.current === true) {
       router.push(`/ready?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
     }
   }, [lobbyMessage]);
@@ -222,7 +224,7 @@ export default function LobbyPage() {
   function modalCallBack(res: boolean) {
     if (res) {
       console.log("Yesが選ばれました");
-      console.log('token', personalMessage.event?.taskToken);
+      //console.log('token', personalMessage.event?.taskToken);
     
       (async () => {
         const ret = await client.queries.sendTaskSuccessSfn({

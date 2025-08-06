@@ -47,11 +47,11 @@ export default function ReadyPage() {
   // お手本の図形情報
   const [answerShapes, setAnswerShapes] = useState<Array<Shape>>([]);
   // ユーザーの図形情報（自分含む）
-  const players = useRef<Record<String, PlayerData>>({});
+  const players = useRef<Record<string, PlayerData>>({});
   // ゲーム用チャネルのwebsocketコネクション
   const lobbyGameChannelRef = useRef<EventsChannel>();
   // ゲーム本体
-  const appRef = useRef<Any>();
+  const appRef = useRef<any>();
   // targetOffsetsをキャッシュするためのref
   const targetOffsetsRef = useRef<Array<{shape: string, color: string, dx: number, dy: number}>>([]);
 
@@ -102,7 +102,7 @@ export default function ReadyPage() {
     console.log('lobbyMessage', lobbyMessage);
     if (!lobbyMessage) return;
     if (lobbyMessage.event?.message == 'start_game' && startFlag.current == true) {
-      router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
+      router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id as string)}`);
     }
   }, [lobbyMessage]);
 
@@ -202,12 +202,21 @@ export default function ReadyPage() {
     const centerY = answerShapes.reduce((sum, shape) => sum + (shape.y || 0), 0) / answerShapes.length;
     
     // 各図形の中心点からの相対位置を計算
-    targetOffsetsRef.current = answerShapes.map(shape => ({
-      shape: shape.shape,
-      color: shape.color,
-      dx: (shape.x || 0) - centerX,
-      dy: (shape.y || 0) - centerY
-    }));
+    targetOffsetsRef.current = answerShapes
+      .filter(shape => shape.shape !== undefined && shape.color !== undefined)
+      .map(shape => ({
+        shape: shape.shape!,
+        color: shape.color!,
+        dx: (shape.x || 0) - centerX,
+        dy: (shape.y || 0) - centerY,
+      }));
+
+    //targetOffsetsRef.current = answerShapes.map(shape => ({
+    //  shape: shape.shape,
+    //  color: shape.color,
+    //  dx: (shape.x || 0) - centerX,
+    //  dy: (shape.y || 0) - centerY
+    //}));
     
     console.log('Target offsets calculated:', targetOffsetsRef.current);
   }, [answerShapes]);
@@ -223,7 +232,8 @@ export default function ReadyPage() {
     });
 
     if (resultShapeRef.current) {
-      resultShapeRef.current.appendChild(app.view);
+      //resultShapeRef.current.appendChild(app.view);
+      resultShapeRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
     }
 
     //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
@@ -261,7 +271,8 @@ export default function ReadyPage() {
     appRef.current = app;
 
     if (gameRef.current) {
-      gameRef.current.appendChild(app.view);
+      //gameRef.current.appendChild(app.view);
+      gameRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
     }
 
     //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
