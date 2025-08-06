@@ -34,6 +34,7 @@ export default function ReadyPage() {
   const [personalMessage, setPersonalMessage] = useState<Record<string, any>>();
   const [lobbyMessage, setLobbyMessage] = useState<Record<string, any>>();
   const [showWait, setShowWait] = useState(false);
+  const [isCleared, setIsCleared] = useState<boolean>(false);
   // ユーザーがゲーム開始を許可した場合trueになる
   let startFlag = useRef<Boolean>(false);
 
@@ -51,6 +52,8 @@ export default function ReadyPage() {
   const lobbyGameChannelRef = useRef<EventsChannel>();
   // ゲーム本体
   const appRef = useRef<Any>();
+  // targetOffsetsをキャッシュするためのref
+  const targetOffsetsRef = useRef<Array<{shape: string, color: string, dx: number, dy: number}>>([]);
 
   // PersonalMessage処理
   useEffect(() => {
@@ -187,6 +190,25 @@ export default function ReadyPage() {
     return g;
   }
 
+  // answerShapesからtargetOffsetsを計算
+  useEffect(() => {
+    if (!answerShapes || answerShapes.length < 2) return;
+    
+    // 基準点（中心点）を計算
+    const centerX = answerShapes.reduce((sum, shape) => sum + (shape.x || 0), 0) / answerShapes.length;
+    const centerY = answerShapes.reduce((sum, shape) => sum + (shape.y || 0), 0) / answerShapes.length;
+    
+    // 各図形の中心点からの相対位置を計算
+    targetOffsetsRef.current = answerShapes.map(shape => ({
+      shape: shape.shape,
+      color: shape.color,
+      dx: (shape.x || 0) - centerX,
+      dy: (shape.y || 0) - centerY
+    }));
+    
+    console.log('Target offsets calculated:', targetOffsetsRef.current);
+  }, [answerShapes]);
+
   // お手本の描画
   useEffect(() => {
     if (!answerShapes || answerShapes.length === 0) return;
@@ -317,37 +339,78 @@ export default function ReadyPage() {
   }, [answerShapes]);
 
   function checkCompletion() {
-    const playerEntries = Object.values(players);
-    if (playerEntries.length !== targetOffsets.length) return;
-
-    for (let i = 0; i < playerEntries.length; i++) {
-      const basePlayer = playerEntries[i];
-      const baseX = basePlayer.graphic.x;
-      const baseY = basePlayer.graphic.y;
-
-      let matchedAll = true;
-
-      for (const target of targetOffsets) {
-        const expectedX = baseX + target.dx;
-        const expectedY = baseY + target.dy;
-
-        const found = playerEntries.find(p => {
-          if (p.shape !== target.shape || p.color !== target.color) return false;
-          const dx = Math.abs(p.graphic.x - expectedX);
-          const dy = Math.abs(p.graphic.y - expectedY);
-          return dx < 10 && dy < 10;
+    // すでにクリア済みなら処理しない
+    if (isCleared) return;
+    
+    // プレイヤーが少なすぎる場合は判定しない
+    const playerEntries = Object.values(players.current);
+    console.log('プレイヤー数:', playerEntries.length);
+    if (playerEntries.length < 2) {
+      console.log('プレイヤーが少なすぎます');
+      return;
+    }
+    
+    // targetOffsetsが計算されていない場合は処理しない
+    const targetOffsets = targetOffsetsRef.current;
+    console.log('targetOffsets:', targetOffsets);
+    if (targetOffsets.length === 0) {
+      console.log('targetOffsetsが計算されていません');
+      return;
+    }
+    
+    // プレイヤーの中心点を計算
+    const centerX = playerEntries.reduce((sum, p) => sum + p.graphic.x, 0) / playerEntries.length;
+    const centerY = playerEntries.reduce((sum, p) => sum + p.graphic.y, 0) / playerEntries.length;
+    console.log('プレイヤーの中心点:', { centerX, centerY });
+    
+    // 各プレイヤーの中心点からの相対位置を計算
+    const playerPositions = playerEntries.map(p => ({
+      player: p,
+      shape: p.shape.shape,
+      color: p.shape.color,
+      dx: p.graphic.x - centerX,
+      dy: p.graphic.y - centerY
+    }));
+    console.log('プレイヤーの相対位置:', playerPositions);
+    
+    // 各targetOffsetに対応するプレイヤーがいるか確認
+    const matchResults = targetOffsets.map(target => {
+      // 対応するプレイヤーを探す
+      const matchingPlayer = playerPositions.find(p => {
+        // 図形と色が一致するか確認
+        const shapeMatch = p.shape === target.shape;
+        const colorMatch = p.color === target.color;
+        
+        // 位置が近いか確認（許容誤差30px）
+        const dx = Math.abs(p.dx - target.dx);
+        const dy = Math.abs(p.dy - target.dy);
+        const positionMatch = dx < 3 && dy < 3;
+        
+        console.log('判定:', {
+          target,
+          player: p,
+          shapeMatch,
+          colorMatch,
+          dx,
+          dy,
+          positionMatch
         });
-
-        if (!found) {
-          matchedAll = false;
-          break;
-        }
-      }
-
-      if (matchedAll) {
-        showMessage("クリア！");
-        return;
-      }
+        
+        return shapeMatch && colorMatch && positionMatch;
+      });
+      
+      return !!matchingPlayer;
+    });
+    
+    console.log('判定結果:', matchResults);
+    
+    // すべてのtargetOffsetに対応するプレイヤーが見つかった場合
+    const allMatched = matchResults.every(result => result);
+    console.log('すべて一致:', allMatched);
+    
+    if (allMatched) {
+      setIsCleared(true);
+      console.log("クリア！おめでとうございます！");
     }
   }
 
@@ -660,7 +723,22 @@ export default function ReadyPage() {
         </div>
       )}
 
+      {isCleared && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          tabIndex={-1}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-body">
+                <h3>クリア！おめでとうございます！</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-
