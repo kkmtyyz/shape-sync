@@ -64,16 +64,8 @@ export default function ReadyPage() {
       console.log('message', personalMessage.event.message);
       const found = personalMessage.event.message.find((s: Shape) => s.id === user_id);
       if (found) myShape.current = found;
-
       // answerShapes
       setAnswerShapes(personalMessage.event.message);
-
-      // players
-      //players.current = personalMessage.event.message.reduce((acc, item) => {
-      //  acc[item.id] = item;
-      //  return acc;
-      //}, {} as Record<string, Shape>);
-      //console.log('players', players.current);
     }
     // taskTokenセット
     if (personalMessage?.event?.taskToken && !taskToken) {
@@ -180,10 +172,10 @@ export default function ReadyPage() {
     console.log('createShapeGraphic shape', shape);  
     console.log('createShapeGraphic color', color);  
     const g = new PIXI.Graphics();
-    const size = 30;
+    const size = 40;
     g.beginFill(PIXI.utils.string2hex(color));
     if (shape === "circle") {
-      g.drawCircle(0, 0, size/2);
+      g.drawCircle(size/2, size/2, size/2);
     } else if (shape === "square") {
       g.drawRect(0, 0, size, size);
     } else if (shape === "triangle") {
@@ -211,13 +203,6 @@ export default function ReadyPage() {
         dy: (shape.y || 0) - centerY,
       }));
 
-    //targetOffsetsRef.current = answerShapes.map(shape => ({
-    //  shape: shape.shape,
-    //  color: shape.color,
-    //  dx: (shape.x || 0) - centerX,
-    //  dy: (shape.y || 0) - centerY
-    //}));
-    
     console.log('Target offsets calculated:', targetOffsetsRef.current);
   }, [answerShapes]);
 
@@ -232,23 +217,23 @@ export default function ReadyPage() {
     });
 
     if (resultShapeRef.current) {
-      //resultShapeRef.current.appendChild(app.view);
       resultShapeRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
     }
 
-    //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
-
-    const size = 30;
-    //const offset = 150 + size / 2;
+    const size = 40;
     const offset = 150 - size / 2;
 
     // 初期描画
     answerShapes.forEach((p) => {
       const g = createShapeGraphic(p.shape, p.color);
-      g.x = p.x + offset;
-      g.y = p.y + offset;
+      if (p.shape === "circle") {
+        g.x = (p.x + size/2) + offset;
+        g.y = (p.y + size/2) + offset;
+      } else {
+        g.x = p.x + offset;
+        g.y = p.y + offset;
+      }
       app.stage.addChild(g);
-      //playerGraphicsMap.set(p.id, g);
     });
 
     return () => {
@@ -261,37 +246,42 @@ export default function ReadyPage() {
   const sendInterval = 1; // ms
 
   // ゲームの描画
+  const width = 500;
+  const height = 300;
   useEffect(() => {
     console.log('myShape', myShape.current);
     const app = new PIXI.Application({
-      width: 500,
-      height: 300,
+      width: width,
+      height: height,
       backgroundColor: 0xFFFFFF,
     });
     appRef.current = app;
 
     if (gameRef.current) {
-      //gameRef.current.appendChild(app.view);
       gameRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
     }
 
-    //const playerGraphicsMap = new Map<string, PIXI.Graphics>();
-
-    const size = 30;
+    const size = 40;
 
     console.log('myShape.current', myShape.current);
     console.log('myShape.current.color', myShape.current.color);
-    const myGraphic = createShapeGraphic(myShape.current.shape, myShape.current.color);
-    //myGraphic.x = 100 + Math.random() * 200;
-    //myGraphic.y = 100 + Math.random() * 200;
-    app.stage.addChild(myGraphic);
+    answerShapes.map(answerShape => {
+      const myGraphic = createShapeGraphic(answerShape.shape, answerShape.color);
+      if (answerShape.shape === "circle") {
+        myGraphic.x = Math.floor(Math.random() * (width-size)) + size/2;
+        myGraphic.y = Math.floor(Math.random() * (height-size)) + size/2;
+      } else {
+        myGraphic.x = Math.floor(Math.random() * (width-size));
+        myGraphic.y = Math.floor(Math.random() * (height-size));
+      }
+      app.stage.addChild(myGraphic);
 
-    players.current[user_id] = {
-      graphic: myGraphic,
-      shape: myShape.current,
-      color: myShape.current.color,
-    };
-    console.log('init players.current', players.current);
+      players.current[answerShape.id] = {
+        graphic: myGraphic,
+        shape: answerShape,
+        color: answerShape.color,
+      };
+    });
 
     // キー操作
     const keys: Record<string, boolean> = {};
@@ -319,7 +309,6 @@ export default function ReadyPage() {
       my.graphic.y = Math.max(0, Math.min(300 - size, my.graphic.y));
 
       if (moved && now - lastSent > sendInterval) {
-      //if (moved) {
         const msg = {
           id: user_id,
           shape: my.shape,
@@ -346,7 +335,6 @@ export default function ReadyPage() {
       keys[e.key] = true;
     };
 
-    //const handleKeyUp = (e: KeyboardEvent) => (keys[e.key] = false);
     const handleKeyUp = (e: KeyboardEvent) => {
       // クリア済みなら処理をスキップ
       if (isCleared) return;
@@ -410,7 +398,7 @@ export default function ReadyPage() {
         // 位置が近いか確認（許容誤差30px）
         const dx = Math.abs(p.dx - target.dx);
         const dy = Math.abs(p.dy - target.dy);
-        const positionMatch = dx < 5 && dy < 5;
+        const positionMatch = dx < 10 && dy < 10;
         
         console.log('判定:', {
           target,

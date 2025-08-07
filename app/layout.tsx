@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-bs-theme="dark">
+    <html lang="ja" data-bs-theme="dark">
       <body>
         <nav className="navbar bg-body-tertiary">
           <div className="container-fluid">
