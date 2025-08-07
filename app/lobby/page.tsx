@@ -22,33 +22,22 @@ export default function LobbyPage() {
   const [lobbyMessage, setLobbyMessage] = useState<Record<string, any>[]>([]);
   const [lobby, setLobby] = useState<Schema["Lobby"]["type"]>();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showWait, setShowWait] = useState(false);
   let connectionFlag = false;
   let readyFlag = useRef<Boolean>(false);
 
   // PersonalMessage処理
   useEffect(() => {
     console.log('received', personalMessage);
-    //if (personalMessage.event?.message == 'confirm_start_ready' && readyFlag.current == false) {
     if ((personalMessage as any).event?.message === 'confirm_start_ready' && readyFlag.current === false) {
       readyFlag.current = true;
-      setShowConfirm(true); // モーダル表示
-      //const result = window.confirm("ゲームを開始してよろしいですか？"); // OK = true, キャンセル = false
-      //if (result) {
-      //  console.log("Yesが選ばれました");
-      //  console.log('token', personalMessage.event?.taskToken);
-
-      //  (async () => {
-      //    const ret = await client.queries.sendTaskSuccessSfn({
-      //      taskToken: personalMessage.event.taskToken,
-      //    });
-      //    console.log(ret);
-      //  //alert('他のプレイヤーを待っています');
- 
-      //    //router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
-      //  })();
-      //} else {
-      //  console.log("Noが選ばれました");
-      //}
+      // モーダル表示
+      if (lobby?.owner === user_id) {
+        setShowWait(true);
+        modalCallBack(true);
+      } else {
+        setShowConfirm(true);
+      }
     }
   }, [personalMessage]);
 
@@ -224,16 +213,11 @@ export default function LobbyPage() {
   function modalCallBack(res: boolean) {
     if (res) {
       console.log("Yesが選ばれました");
-      //console.log('token', personalMessage.event?.taskToken);
-    
       (async () => {
         const ret = await client.queries.sendTaskSuccessSfn({
           taskToken: personalMessage.event.taskToken,
         });
         console.log(ret);
-      //alert('他のプレイヤーを待っています');
-    
-        //router.push(`/game?id=${user_id}&lobby_id=${encodeURIComponent(lobby_id)}`);
       })();
     } else {
       console.log("Noが選ばれました");
@@ -291,6 +275,23 @@ export default function LobbyPage() {
           </div>
         </div>
       )}
+
+      {showWait && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          tabIndex={-1}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-body">
+                <h3>他のプレイヤーの準備完了を待っています</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -103,6 +103,23 @@ export default function GamePage() {
     return () => channel && channel.close();
   }, []);
 
+  function createShapeGraphic(shape: string, color: string) {
+    console.log('createShapeGraphic shape', shape);  
+    console.log('createShapeGraphic color', color);  
+    const g = new PIXI.Graphics();
+    const size = 40;
+    g.beginFill(PIXI.utils.string2hex(color));
+    if (shape === "circle") {
+      g.drawCircle(size/2, size/2, size/2);
+    } else if (shape === "square") {
+      g.drawRect(0, 0, size, size);
+    } else if (shape === "triangle") {
+      g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
+    }
+    g.endFill();
+    return g;
+  }
+
   // お手本の描画
   useEffect(() => {
     if (!answerShapes || answerShapes.length === 0) return;
@@ -116,38 +133,19 @@ export default function GamePage() {
     });
 
     if (resultShapeRef.current) {
-      resultShapeRef.current.appendChild(app.view);
+      resultShapeRef.current.appendChild(app.view as unknown as HTMLCanvasElement);
     }
 
     const playerGraphicsMap = new Map<string, PIXI.Graphics>();
 
     const size = 40;
-    const offset = width/2 - size / 2;
-
-    const createShapeGraphic = (shape: string, color: string) => {
-      const g = new PIXI.Graphics();
-      g.beginFill(PIXI.utils.string2hex(color));
-      if (shape === "circle") {
-        g.drawCircle(0, 0, size / 2);
-      } else if (shape === "square") {
-        g.drawRect(0, 0, size, size);
-      } else if (shape === "triangle") {
-        g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
-      }
-      g.endFill();
-      return g;
-    };
+    const offset = width/2 - size/2;
 
     // 初期描画
     answerShapes.forEach((p) => {
       const g = createShapeGraphic(p.shape, p.color);
-      if (p.shape === "circle") {
-        g.x = (p.x + size/2) + offset;
-        g.y = (p.y + size/2) + offset;
-      } else {
-        g.x = p.x + offset;
-        g.y = p.y + offset;
-      }
+      g.x = p.x + offset;
+      g.y = p.y + offset;
       app.stage.addChild(g);
       playerGraphicsMap.set(p.id, g);
     });
@@ -176,21 +174,6 @@ export default function GamePage() {
     const playerGraphicsMap = new Map<string, PIXI.Graphics>();
 
     const size = 40;
-    //const offset = width - size / 2;
-    const createShapeGraphic = (shape: string, color: string) => {
-      const g = new PIXI.Graphics();
-      //g.beginFill(color);
-      g.beginFill(PIXI.utils.string2hex(color));
-      if (shape === "circle") {
-        g.drawCircle(size/2, size/2, size / 2);
-      } else if (shape === "square") {
-        g.drawRect(0, 0, size, size);
-      } else if (shape === "triangle") {
-        g.moveTo(0 + size/2, 0).lineTo(0, size).lineTo(size, size).lineTo(0 + size/2, 0);
-      }
-      g.endFill();
-      return g;
-    };
 
     // 初期描画
     const g = createShapeGraphic(myShape.current.shape, myShape.current.color);
@@ -229,7 +212,7 @@ export default function GamePage() {
       //const me = players.find((p) => p.id === myId);
       if (!myShape.current) return;
 
-      const speed = 5;
+      const speed = 3;
       if (keys["ArrowUp"]) myShape.current.y -= speed;
       if (keys["ArrowDown"]) myShape.current.y += speed;
       if (keys["ArrowLeft"]) myShape.current.x -= speed;

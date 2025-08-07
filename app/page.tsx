@@ -74,27 +74,21 @@ export default function App() {
   }, [user]);
 
   async function enterLobby(lobby_id: string) {
-    //const { data: userLobby, errors } = await client.models.UserLobby.get({
-    //  id: user?.sub as string
-    //});
     console.log('enterLobby');
-    //console.log('userLobby', userLobby);
     const selectionSet = ['id', 'lobby_id', 'user_name'] as const;
     await client.models.UserLobby.update({
       id: user?.sub as string,
       lobby_id: lobby_id,
       user_name: user?.preferred_username,
     });
-    //}, {selectionSet: ['id', 'lobby_id', 'user_name']});
-    //}, {selectionSet: [...selectionSet]});
 
     router.push(`/lobby?id=${user?.sub}&lobby_id=${encodeURIComponent(lobby_id)}`);
   }
 
   return (
     <main>
-      <h2>Lobby List</h2>
-      <div className="mt-5">参加するロビーをクリックしてください</div>
+      <h2 className="mt-3">Shape Sync へようこそ！</h2>
+      <h4 className="mt-5">参加するロビーを選択してください</h4>
       <div className="list-group mt-3">
         {lobbies.map((lobby) => (
           <button
