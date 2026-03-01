@@ -21,7 +21,7 @@ const schema = a.schema({
       lobby_id: a.string(),
       user_name: a.string(),
     })
-    .authorization((allow) => [allow.authenticated()]),
+    .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   startSfn: a
     .query()
     .arguments({
@@ -47,6 +47,9 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: "userPool",
+    apiKeyAuthorizationMode: {
+      expiresInDays: 365,
+    },
   },
 });
 
