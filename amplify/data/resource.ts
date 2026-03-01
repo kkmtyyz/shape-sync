@@ -15,13 +15,13 @@ const schema = a.schema({
       owner: a.string(),
       state: a.string(),
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [allow.authenticated()]),
   UserLobby: a
     .model({
       lobby_id: a.string(),
       user_name: a.string(),
     })
-    .authorization((allow) => [allow.publicApiKey()]),
+    .authorization((allow) => [allow.authenticated()]),
   startSfn: a
     .query()
     .arguments({
@@ -29,8 +29,7 @@ const schema = a.schema({
       lobby_id: a.string(),
     })
     .returns(a.string())
-    //.authorization(allow => [allow.guest()])
-    .authorization((allow) => [allow.publicApiKey()])
+    .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(startSfn)),
   sendTaskSuccessSfn: a
     .query()
@@ -38,7 +37,7 @@ const schema = a.schema({
       taskToken: a.string(),
     })
     .returns(a.string())
-    .authorization((allow) => [allow.publicApiKey()])
+    .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(sendTaskSuccessSfn)),
 });
 
@@ -47,10 +46,7 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: "apiKey",
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
-    },
+    defaultAuthorizationMode: "userPool",
   },
 });
 
