@@ -97,10 +97,6 @@ export default function LobbyPage() {
 
 
   async function publishEvent() {
-    // Publish via HTTP POST
-    //await events.post('default/channel', { some: 'data' });
-
-    // Alternatively, publish events through the WebSocket channel
     const channel = await events.connect('default/channel');
     await channel.publish({ some: 'data2' });
   }
@@ -114,20 +110,6 @@ export default function LobbyPage() {
     getCurrentUserAsync();
   }, []);
 
-  /*
-  function listUsers() {
-    // ロビーに入ったらロビーにいるユーザーをサブスクライブ
-    const subscription = client.models.UserLobby.observeQuery({
-      filter: {
-        lobby_id: {eq: lobby_id}
-      }
-    }).subscribe({
-      next: (data) => setUserLobby([...data.items]),
-    });
-    return () => subscription.unsubscribe();
-  }
-  */
-
   useEffect(() => {
     if (!lobby_id) return;
      (async () => {
@@ -140,26 +122,15 @@ export default function LobbyPage() {
      })();
      console.log('users', userLobby);
 
-    //listUsers();
     // ロビーに入ったらロビーにいるユーザーをサブスクライブ
-    //const subscription = client.models.UserLobby.observeQuery({
-    //const selectionSet = ['id', 'lobby_id', 'user_name'] as const;
     const subscription = client.models.UserLobby.onUpdate({
-    //const subscription = client.models.UserLobby.observeQuery({
       filter: {
         lobby_id: {eq: lobby_id}
       }
-      //selectionSet: ['id', 'lobby_id', 'user_name']
-      //selectionSet: [...selectionSet]
     }).subscribe({
-      //next: (data) => setUserLobby([...data.items]),
-      //next: ({items, isSynced}) => {
       next: (data) => {
         console.log('data', data);
-        //setUserLobby(data.items);
         setUserLobby(prev => [...prev, data]);
-        //setUserLobby(items);
-        //setUserLobby([...items])
       }
     });
     return () => subscription.unsubscribe();
@@ -187,8 +158,6 @@ export default function LobbyPage() {
   const getIsOwnerIdAsync = async() => {
     const {data: lobby, errors} = await client.models.Lobby.get({ id: lobby_id });
     console.log(lobby);
-    //console.log(user);
-    //if (lobby?.owner === user?.sub) {
     if (lobby?.owner === user_id) {
       setIsOwner(true);
     }
@@ -201,20 +170,18 @@ export default function LobbyPage() {
   async function startGame() {
     console.log('check');
     const user_num = userLobby.length;
-    const ret = await client.queries.startSfn({
-      name: "Amplify",
+    const ret = await client.mutations.startSfn({
       lobby_id: lobby_id
     })
     console.log(ret);
     console.log(user_num);
-    //await events.post('default/channel', { some: 'start_game' });
   }
 
   function modalCallBack(res: boolean) {
     if (res) {
       console.log("Yesが選ばれました");
       (async () => {
-        const ret = await client.queries.sendTaskSuccessSfn({
+        const ret = await client.mutations.sendTaskSuccessSfn({
           taskToken: personalMessage.event.taskToken,
         });
         console.log(ret);

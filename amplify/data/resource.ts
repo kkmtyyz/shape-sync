@@ -23,16 +23,15 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   startSfn: a
-    .query()
+    .mutation()
     .arguments({
-      name: a.string(),
       lobby_id: a.string(),
     })
     .returns(a.string())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(startSfn)),
   sendTaskSuccessSfn: a
-    .query()
+    .mutation()
     .arguments({
       taskToken: a.string(),
     })

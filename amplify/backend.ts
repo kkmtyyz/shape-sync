@@ -1,48 +1,60 @@
 import { defineBackend } from '@aws-amplify/backend';
+import * as iam from "aws-cdk-lib/aws-iam";
 import { auth } from './auth/resource.js';
 import { data } from './data/resource.js';
 import { startSfn } from './functions/start-sfn/resource';
-import {
-    AuthorizationType,
-    CfnApi,
-    CfnApiKey,
-    CfnChannelNamespace,
-} from 'aws-cdk-lib/aws-appsync'
+import { sendTaskSuccessSfn } from './functions/send-task-success-sfn/resource';
+import { AuthorizationType } from 'aws-cdk-lib/aws-appsync'
+import { CustomResources } from './custom/resource';
 
 const backend = defineBackend({
   auth,
   data,
-  startSfn
+  startSfn,
+  sendTaskSuccessSfn
 });
 
-const customResources = backend.createStack('custom-resources-shape-sync');
-const cfnEventAPI = new CfnApi(customResources, 'cfnEventAPI', {
-    name: 'realtime-shape-sync',
-    eventConfig: {
-        authProviders: [{ authType: AuthorizationType.API_KEY }],
-        connectionAuthModes: [{ authType: AuthorizationType.API_KEY }],
-        defaultPublishAuthModes: [{ authType: AuthorizationType.API_KEY }],
-        defaultSubscribeAuthModes: [{ authType: AuthorizationType.API_KEY }],
-    },
-})
+// startSfnの権限設定
+const startSfnLambda = backend.startSfn.resources.lambda;
+startSfnLambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ["states:StartExecution", "ssm:GetParameter"],
+    resources: ["*"], // スタックの循環参照になるのでワイルドカードにする
+  })
+);
 
-new CfnChannelNamespace(customResources, 'cfnEventAPINamespace', {
-    name: 'default',
-    apiId: cfnEventAPI.attrApiId,
-})
+// sendTaskSuccessSfnの権限設定
+const sendTaskSuccessSfnLambda = backend.sendTaskSuccessSfn.resources.lambda;
+sendTaskSuccessSfnLambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ["states:SendTaskSuccess"],
+    resources: ["*"], // スタックの循環参照になるのでワイルドカードにする
+  })
+);
 
-const cfnApiKey = new CfnApiKey(customResources, 'cfnEventAPIKey', {
-    apiId: cfnEventAPI.attrApiId,
-    description: 'realtime shape-sync',
-    expires: 24 * 465,
-})
+
+// GraphQLのURL取得
+const graphQlUrl = backend.data.resources.cfnResources.cfnGraphqlApi.attrGraphQlUrl;
+
+// GraphQLのAPIキー取得
+const graphQlApiKeyValue = backend.data.resources.cfnResources.cfnApiKey!.attrApiKey;
+
+const customResourceStack = backend.createStack('ShapeSyncCustomResources');
+const customResources = new CustomResources(
+  customResourceStack,
+  'ShapeSyncCustomResources',
+  {
+      graphQlUrl,
+      graphQlApiKeyValue,
+  }
+);
 
 backend.addOutput({
     custom: {
         events: {
-            url: `https://${cfnEventAPI.getAtt('Dns.Http').toString()}/event`,
-            api_key: cfnApiKey.attrApiKey,
-            aws_region: customResources.region,
+            url: customResources.eventApiUrl,
+            api_key: customResources.eventApiKeyValue,
+            aws_region: customResourceStack.region,
             default_authorization_type: AuthorizationType.API_KEY,
         },
     },

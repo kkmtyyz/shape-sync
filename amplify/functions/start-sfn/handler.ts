@@ -1,37 +1,50 @@
-/*
-import type { Schema } from "../../data/resource"
-
-export const handler: Schema["startSfn"]["functionHandler"] = async (event) => {
-  // arguments typed from `.arguments()`
-  const { name, lobby_id } = event.arguments
-  console.log(name);
-  console.log(lobby_id);
-  // return typed from `.returns()`
-  return `Hello, ${name}!`
-}
-*/
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 import type { Schema } from "../../data/resource";
 
 const sfnClient = new SFNClient({});
+const ssm = new SSMClient({});
 
-// Lambda Handler
+/**
+ * Step FunctionsワークフローのARNを環境変数から取得する
+ */
+async function getStateMachineArn(): Promise<string> {
+  const paramName = process.env.STATE_MACHINE_ARN_PARAM;
+  if (!paramName) {
+    throw new Error("STATE_MACHINE_ARN_PARAM not set");
+  }
+
+  const result = await ssm.send(
+    new GetParameterCommand({
+      Name: paramName,
+    })
+  );
+
+  if (!result.Parameter?.Value) {
+    throw new Error("StateMachine ARN not found in SSM");
+  }
+
+  return result.Parameter.Value;
+}
+
+/**
+ * Step Functionsワークフローを実行する
+ * 実行時にワークフローにロビーIDを渡す
+ */
 export const handler: Schema["startSfn"]["functionHandler"] = async (event) => {
-  const { name, lobby_id } = event.arguments;
-
-  console.log("Name:", name);
+  const { lobby_id } = event.arguments;
   console.log("Lobby ID:", lobby_id);
 
-  // Step Function の ARN（環境変数に入れるのが推奨）
-  const stateMachineArn = process.env.STATE_MACHINE_ARN ?? "arn:aws:states:ap-northeast-1:546121383926:stateMachine:game";
+  // ステートマシンのARN取得
+  const stateMachineArn = await getStateMachineArn();
 
   // 実行パラメータを設定
   const input = JSON.stringify({
-    name,
     lobby_id,
   });
 
   try {
+    // ワークフロー実行
     const command = new StartExecutionCommand({
       stateMachineArn,
       input,
@@ -41,7 +54,7 @@ export const handler: Schema["startSfn"]["functionHandler"] = async (event) => {
 
     console.log("Step Function started:", response.executionArn);
 
-    return `Started Step Function for ${name}`;
+    return `Started Step Function for ${lobby_id}`;
   } catch (error) {
     console.error("Error starting Step Function:", error);
     throw new Error("Step Function execution failed");

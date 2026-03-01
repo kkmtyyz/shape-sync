@@ -191,25 +191,21 @@ export default function GamePage() {
     // キー操作
     const keys: Record<string, boolean> = {};
 
-    //const handleKeyDown = (e: KeyboardEvent) => (keys[e.key] = true);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-        e.preventDefault(); // ← ここでスクロールを防止
+        e.preventDefault();
       }
       keys[e.key] = true;
     };
 
-    //const handleKeyUp = (e: KeyboardEvent) => (keys[e.key] = false);
     const handleKeyUp = (e: KeyboardEvent) => {
       keys[e.key] = false;
     };
 
-    //window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keydown", handleKeyDown, { passive: false });
     window.addEventListener("keyup", handleKeyUp);
 
     app.ticker.add(() => {
-      //const me = players.find((p) => p.id === myId);
       if (!myShape.current) return;
 
       const speed = 3;
@@ -240,7 +236,7 @@ export default function GamePage() {
 
   const startGame = async () => {
     if (!taskToken) return;
-    await client.queries.sendTaskSuccessSfn({ taskToken });
+    await client.mutations.sendTaskSuccessSfn({ taskToken });
     startFlag.current = true;
     setShowWait(true); // モーダル表示
   };

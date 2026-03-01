@@ -18,8 +18,6 @@ export default function AuthenticatorWrapper({
             order: 2,
           },
           password: {
-            //label: 'パスワード',
-            //placeholder: 'パスワードを入力',
             isRequired: true,
             order: 3,
           },

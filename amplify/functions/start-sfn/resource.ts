@@ -1,8 +1,12 @@
 import { defineFunction } from '@aws-amplify/backend';
 
 export const startSfn = defineFunction({
-  // optionally specify a name for the Function (defaults to directory name)
   name: 'start-sfn',
-  // optionally specify a path to your handler (defaults to "./handler.ts")
-  entry: './handler.ts'
+  entry: './handler.ts',
+  memoryMB: 1024,
+  timeoutSeconds: 60,
+  environment: {
+    // 実行するステートマシンARNのパラメーター名
+    STATE_MACHINE_ARN_PARAM: '/shapesync/stateMachineArn',
+  },
 });

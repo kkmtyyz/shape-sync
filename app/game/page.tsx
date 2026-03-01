@@ -404,14 +404,14 @@ export default function ReadyPage() {
 
   const endGame = async () => {
     if (!taskToken) return;
-    await client.queries.sendTaskSuccessSfn({ taskToken });
+    await client.mutations.sendTaskSuccessSfn({ taskToken });
     router.push(`/`);
   };
 
 
   const gotoHome = async () => {
     if (!taskToken) return;
-    await client.queries.sendTaskSuccessSfn({ taskToken });
+    await client.mutations.sendTaskSuccessSfn({ taskToken });
     router.push(`/`);
   };
 

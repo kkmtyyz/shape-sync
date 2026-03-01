@@ -3,7 +3,9 @@ import type { Schema } from "../../data/resource";
 
 const client = new SFNClient({ region: "ap-northeast-1" });
 
-
+/**
+ * StepFunctionsのコールバックとしてタスクトークンを返す
+ */
 export const handler: Schema["sendTaskSuccessSfn"]["functionHandler"] = async (event) => {
   const { taskToken } = event.arguments;
 
@@ -12,6 +14,7 @@ export const handler: Schema["sendTaskSuccessSfn"]["functionHandler"] = async (e
   }
 
   try {
+    // 今のところ常にSuccessとして返す
     const command = new SendTaskSuccessCommand({
       taskToken,
       output: JSON.stringify({ message: "success" }), // outputはJSON文字列で渡す
