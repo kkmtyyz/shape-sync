@@ -34,6 +34,7 @@ new CfnChannelNamespace(customResources, 'cfnEventAPINamespace', {
 const cfnApiKey = new CfnApiKey(customResources, 'cfnEventAPIKey', {
     apiId: cfnEventAPI.attrApiId,
     description: 'realtime shape-sync',
+    expires: 24 * 465,
 })
 
 backend.addOutput({
