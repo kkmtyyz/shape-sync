@@ -13,16 +13,29 @@
 
 ブログ記事「[AWSで実現するマルチクライアント状態同期とリアルタイム](https://kkmtyyz.hatenablog.com/entry/2025/09/12/120750)」にて詳しく解説しています。
 
-## 動作イメージ
-![game](./readme_img/game.png)
-![realtime_state_sync_1](./readme_img/realtime_state_sync_1.png)
-![realtime_state_sync_2](./readme_img/realtime_state_sync_2.png)
-![realtime_state_sync_3](./readme_img/realtime_state_sync_3.png)
+## プレイ動画
+[AWS Step FunctionsとAppSync Eventsで構築したオンラインゲーム 解説付きプレイ動画](https://www.docswell.com/s/kkmtyyz/vPNWVM5-2025-08-10-5892#)
 
+
+## 動作イメージ
+- 実際にはロビー画面やレディー画面などもあります。
+
+- プレイ画面
+<p align="center">
+  <img src="./readme_img/game.png" width="600">
+</p>
+
+- 状態同期
+<p align="center">
+  <img src="./readme_img/realtime_state_sync_1.png" width="600">
+  <img src="./readme_img/realtime_state_sync_2.png" width="600">
+</p>
 
 ## アーキテクチャ図
 
-![arch](./readme_img/arch.png)
+<p align="center">
+  <img src="./readme_img/arch.png" width="800">
+</p>
 
 ## デプロイ方法
 
@@ -31,4 +44,5 @@
 
 ## License
 [MIT](./LICENSE-MIT)
+
 
