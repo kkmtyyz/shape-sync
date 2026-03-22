@@ -1,25 +1,34 @@
-## AWS Amplify Next.js (App Router) Starter Template
+# マルチクライアント状態同期とリアルタイム通信を使用したオンラインゲーム
 
-This repository provides a starter template for creating applications using Next.js (App Router) and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
+**プレイヤーごとにランダムな色と形の図形を割り当て、協力してお手本と同じ図形を完成させるゲームです。**
+**AWS StepFunctionsとAWS AppSyncを使用したサーバーレスなオンラインゲームシステムです。**
+**プレイヤーの状態を同期しつつ、リアルタイムに互いの状態を共有します。**
 
-## Overview
+次のような特徴があります。
 
-This template equips you with a foundational Next.js application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+- Amazon Cognitoを使用したユーザー認証
+- AWS StepFunctionsタスクトークンを使用したマルチクライアント状態同期
+- AWS AppSync Eventsを使用したWebSocketによるマルチクライアント間リアルタイム通信
+- AWS Amplify Gen2によるフロントエンドとバックエンドの効率的な開発
 
-## Features
+ブログ記事「[AWSで実現するマルチクライアント状態同期とリアルタイム](https://kkmtyyz.hatenablog.com/entry/2025/09/12/120750)」にて詳しく解説しています。
 
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
+## 動作イメージ
+![game](./readme_img/game.png)
+![realtime_state_sync_1](./readme_img/realtime_state_sync_1.png)
+![realtime_state_sync_2](./readme_img/realtime_state_sync_2.png)
+![realtime_state_sync_3](./readme_img/realtime_state_sync_3.png)
 
-## Deploying to AWS
 
-For detailed instructions on deploying your application, refer to the [deployment section](https://docs.amplify.aws/nextjs/start/quickstart/nextjs-app-router-client-components/#deploy-a-fullstack-app-to-aws) of our documentation.
+## アーキテクチャ図
 
-## Security
+![arch](./readme_img/arch.png)
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+## デプロイ方法
+
+- AWS CDKにて`cdk bootstrap`が完了している必要があります
+- Amplify CI/CDでデプロイ。サンドボックスの場合は `$ npx ampx sandbox` を実行
 
 ## License
+[MIT](./LICENSE-MIT)
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
